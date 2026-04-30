@@ -14,31 +14,54 @@
   <h2>Live Data Table</h2>
   <table id="csvTable"></table>
 
-  <script>
-    // Fetch the CSV file from the same directory
-    fetch('data.csv') 
-      .then(response => response.text())
-      .then(csvText => {
-        const rows = csvText.split('\n');
-        const table = document.getElementById('csvTable');
+<script>
+  // Simple CSV parser that ignores commas inside quotes
+  function parseCSVRow(text) {
+    let result = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+      let char = text[i];
+      if (char === '"') {
+        inQuotes = !inQuotes; // Toggle quote state
+      } else if (char === ',' && !inQuotes) {
+        result.push(current.trim());
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    result.push(current.trim());
+    return result;
+  }
+
+  fetch('data.csv') 
+    .then(response => response.text())
+    .then(csvText => {
+      const rows = csvText.split('\n');
+      const table = document.getElementById('csvTable');
+      
+      rows.forEach((row, index) => {
+        if (!row.trim()) return; // Skip empty lines
         
-        rows.forEach((row, index) => {
-          if (!row.trim()) return; // Skip empty trailing lines
-          
-          // Basic split (works fine as long as your CSV doesn't have commas inside quotes)
-          const columns = row.split(','); 
-          const tr = document.createElement('tr');
-          
-          columns.forEach(col => {
-            const cell = document.createElement(index === 0 ? 'th' : 'td');
-            cell.textContent = col.trim();
-            tr.appendChild(cell);
-          });
-          
-          table.appendChild(tr);
+        const columns = parseCSVRow(row);
+        const tr = document.createElement('tr');
+        
+        // Handle messy data that might not have the right amount of columns
+        if (columns.length < 2) return; 
+
+        columns.forEach(col => {
+          // Clean up any lingering quotes
+          let cleanText = col.replace(/^"|"$/g, '');
+          const cell = document.createElement(index === 0 ? 'th' : 'td');
+          cell.textContent = cleanText;
+          tr.appendChild(cell);
         });
-      })
-      .catch(err => console.error("Error loading CSV:", err));
-  </script>
+        
+        table.appendChild(tr);
+      });
+    })
+    .catch(err => console.error("Error loading CSV:", err));
+</script>
 </body>
 </html>
